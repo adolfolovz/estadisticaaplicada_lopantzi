@@ -1,0 +1,348 @@
+---
+title: "Tarea: Variables Aleatorias Discretas"
+subtitle: "Licenciatura en Economía Industrial"
+author: "Adolfo Lopantzi"
+---
+
+# Distribución Uniforme Discreta
+
+### Ejercicio 1.1
+
+Simular 500 observaciones de $X \sim \text{Uniforme}(\{0, 1, 2, 3, 4\})$ y comparar frecuencias observadas vs. teóricas.
+
+```{r}
+set.seed(123)
+n_obs <- 500
+valores <- 0:4
+
+# Simulación
+muestra_unif <- sample(valores, size = n_obs, replace = TRUE)
+
+# Frecuencias observadas vs teóricas (0.2 * 500 = 100)
+tabla_frec <- table(muestra_unif)
+tabla_comparativa <- data.frame(
+  Valor = valores,
+  Frec_Observada = as.numeric(tabla_frec),
+  Frec_Teorica = n_obs / length(valores),
+  Prob_Observada = as.numeric(tabla_frec) / n_obs,
+  Prob_Teorica = 1 / length(valores)
+)
+print(tabla_comparativa)
+```
+
+Simulé 500 observaciones donde cada número del 0 al 4 tiene la misma probabilidad, así que en teoría a cada uno le tocan 100. En la simulación las frecuencias salieron entre `r min(tabla_comparativa$Frec_Observada)` y `r max(tabla_comparativa$Frec_Observada)`: no exactamente 100, porque es azar, pero todas cerca. Las proporciones quedan alrededor de 0.2, que es lo que dice la teoría.
+
+### Ejercicio 1.2
+
+Verificar el Teorema Central del Límite (TCL) con $k = 1000$ muestras de tamaño $n = 50$ de $X \sim \text{Uniforme}(\{1, 2, \dots, 10\})$.
+
+```{r}
+set.seed(123)
+k <- 1000
+n <- 50
+valores_10 <- 1:10
+
+# Medias teóricas
+mu_teorica <- mean(valores_10) # 5.5
+var_teorica <- sum((valores_10 - mu_teorica)^2) / length(valores_10) # 8.25
+se_teorica <- sqrt(var_teorica / n)
+
+# Generación de medias muestrales
+medias_unif <- replicate(k, mean(sample(valores_10, size = n, replace = TRUE)))
+
+# Histograma para verificar normalidad
+hist(medias_unif, probability = TRUE, main = "TCL - Uniforme Discreta",
+     xlab = "Medias Muestrales", col = "#C9C5BD", border = "white")
+curve(dnorm(x, mean = mu_teorica, sd = se_teorica), add = TRUE, col = "#3D4650", lwd = 2)
+```
+
+La variable original es plana, todos los valores del 1 al 10 son igual de probables, así que no tiene forma de campana. Pero al sacar 1,000 medias de muestras de 50, el histograma de las medias sí sale en forma de campana y se ajusta a la curva normal. Eso es el TCL: no importa la forma de la variable original, el promedio termina siendo normal. Además, las medias quedan centradas en `r round(mean(medias_unif), 2)`, casi el 5.5 teórico.
+
+# Distribuciones Bernoulli y Binomial
+
+### Ejercicio 2.1
+
+$X \sim \text{Binomial}(n=20, p=0.85)$ (Efectividad de medicamento en 20 pacientes).
+
+```{r}
+n <- 20
+p <- 0.85
+
+# a. Gráfica de la función de probabilidad
+x_vals <- 0:20
+prob_x <- dbinom(x_vals, size = n, prob = p)
+barplot(prob_x, names.arg = x_vals, col = "#8E99A3",
+        main = "Función de Probabilidad Binomial(20, 0.85)", xlab = "Éxitos", ylab = "Probabilidad")
+
+# b. Esperanza, Varianza y Desviación Estándar
+esp_bin <- n * p
+var_bin <- n * p * (1 - p)
+sd_bin  <- sqrt(var_bin)
+cat("Esperanza:", esp_bin, "\nVarianza:", var_bin, "\nDesv. Estándar:", sd_bin, "\n")
+
+# c. Simulación con 1000 experimentos
+set.seed(123)
+sim_bin <- rbinom(1000, size = n, prob = p)
+cat("Media simulada:", mean(sim_bin), "\nVarianza simulada:", var(sim_bin), "\n")
+```
+
+Si el medicamento funciona en el 85% de los casos, de 20 pacientes lo esperado es que funcione en `r esp_bin`, con una desviación estándar de `r round(sd_bin, 2)` pacientes. La gráfica está cargada a la derecha porque la probabilidad de éxito es alta: lo normal es que funcione en 16, 17 o 18 pacientes, y que funcione en menos de 13 es casi imposible. En la simulación de 1,000 experimentos la media salió `r round(mean(sim_bin), 2)` y la varianza `r round(var(sim_bin), 2)`, muy cerca de los valores teóricos (`r esp_bin` y `r var_bin`).
+
+### Ejercicio 2.2
+
+Verificar que si $X \sim \text{Bin}(n, p)$ y $Y \sim \text{Bin}(m, p)$, entonces $X + Y \sim \text{Bin}(n + m, p)$.
+
+```{r}
+set.seed(123)
+n <- 10; m <- 15; p <- 0.4
+N <- 10000
+
+X <- rbinom(N, size = n, prob = p)
+Y <- rbinom(N, size = m, prob = p)
+Suma_XY <- X + Y
+
+Z_directa <- rbinom(N, size = n + m, prob = p)
+
+# Comparación de medias y varianzas
+mean(Suma_XY); mean(Z_directa)
+var(Suma_XY); var(Z_directa)
+```
+
+Sumé dos binomiales independientes con la misma $p$ (una de 10 ensayos y otra de 15) y las comparé con una binomial de 25 ensayos simulada directamente. Las medias (`r round(mean(Suma_XY), 2)` contra `r round(mean(Z_directa), 2)`) y las varianzas (`r round(var(Suma_XY), 2)` contra `r round(var(Z_directa), 2)`) salen prácticamente iguales, y las dos cerca de los valores teóricos de 10 y 6. Tiene sentido: hacer 10 ensayos y luego otros 15 es lo mismo que hacer 25 de una vez. Ojo: esto solo funciona si las dos tienen la misma probabilidad de éxito.
+
+### Ejercicio 2.3
+
+Aproximación Normal a la Binomial ($n = 100, p = 0.3$).
+
+```{r}
+n <- 100; p <- 0.3
+mu <- n * p
+sigma <- sqrt(n * p * (1 - p))
+
+# Verificación de condiciones: np >= 5 y n(1-p) >= 5
+cat("np =", n*p, ">= 5 | n(1-p) =", n*(1-p), ">= 5\n")
+
+# Comparación gráfica
+x <- 0:100
+plot(x, dbinom(x, n, p), type = "h", col = "#5F6B76", lwd = 2, main = "Binomial vs Aproximación Normal")
+curve(dnorm(x, mean = mu, sd = sigma), add = TRUE, col = "#8B5E3C", lwd = 2)
+```
+
+Primero revisé que se cumplieran las condiciones: $np = 30$ y $n(1-p) = 70$, las dos muy por encima de 5. En la gráfica, la curva normal pasa justo por la punta de las barras de la binomial, así que la aproximación es muy buena. En la práctica esto sirve porque calcular probabilidades con la normal es mucho más sencillo que sumar muchos términos de la binomial.
+
+### Ejercicio 2.4
+
+TCL para medias de una Binomial($10, 0.7$) con $k=1000, n=30$.
+
+```{r}
+set.seed(123)
+k <- 1000; n_muestra <- 30
+size_b <- 10; prob_b <- 0.7
+
+medias_binom <- replicate(k, mean(rbinom(n_muestra, size = size_b, prob = prob_b)))
+
+hist(medias_binom, probability = TRUE, col = "#B8B0A2", main = "TCL - Binomial")
+curve(dnorm(x, mean = size_b * prob_b, sd = sqrt(size_b * prob_b * (1 - prob_b) / n_muestra)),
+      add = TRUE, col = "#3D4650", lwd = 2)
+```
+
+Con medias de muestras de 30 de una Binomial(10, 0.7), el histograma sale en forma de campana y centrado en `r round(mean(medias_binom), 2)`, prácticamente el 7 teórico ($10 \times 0.7$). Otra vez se cumple el TCL, ahora con una variable que de origen es discreta y un poco cargada a la derecha.
+
+# Distribución Geométrica
+
+### Ejercicio 3.1
+
+Pieza defectuosa con $p = 0.02$.
+
+```{r}
+p <- 0.02
+
+# a. Gráficas de PMF y CDF
+x <- 0:150 # Número de fracasos antes del primer éxito
+plot(x, dgeom(x, prob = p), type = "h", col = "#8E99A3", main = "PMF Geométrica(0.02)")
+plot(x, pgeom(x, prob = p), type = "s", col = "#3D4650", main = "CDF Geométrica(0.02)")
+
+# b. Esperanza, Varianza y Desviación Estándar
+esp_geom <- (1 - p) / p
+var_geom <- (1 - p) / (p^2)
+sd_geom  <- sqrt(var_geom)
+
+# c. Simulación de 10,000 ensayos
+set.seed(123)
+sim_geom <- rgeom(10000, prob = p)
+cat("Media Teor:", esp_geom, "| Media Sim:", mean(sim_geom), "\n")
+
+# d. Falta de memoria: P(X >= s + t | X >= s) = P(X >= t)
+s <- 10; t <- 5
+p_condicional <- mean(sim_geom[sim_geom >= s] >= s + t)
+p_teorica     <- mean(sim_geom >= t)
+cat("P(X >= 15 | X >= 10):", p_condicional, "| P(X >= 5):", p_teorica, "\n")
+```
+
+Si el 2% de las piezas sale defectuoso, en promedio se fabrican `r esp_geom` piezas buenas antes de la primera defectuosa (en la simulación salió `r round(mean(sim_geom), 2)`). La desviación estándar es de `r round(sd_geom, 2)`, casi igual que la media, así que a veces la defectuosa sale muy pronto y a veces tarda mucho.
+
+Lo más interesante es la **falta de memoria**: la probabilidad de aguantar 5 piezas más, sabiendo que ya van 10 sin falla (`r round(p_condicional, 4)`), es prácticamente la misma que la de aguantar 5 desde cero (`r round(p_teorica, 4)`). O sea, que la máquina lleve rato sin fallar no cambia la probabilidad de que la siguiente pieza salga mal.
+
+### Ejercicio 3.2
+
+TCL para $k=1000, n=50$ en una Geométrica
+
+```{r}
+set.seed(123)
+p <- 0.1
+medias_geom <- replicate(1000, mean(rgeom(50, prob = p)))
+
+hist(medias_geom, probability = TRUE, col = "#D6D1C7", main = "TCL - Geométrica")
+curve(dnorm(x, mean = (1-p)/p, sd = sqrt((1-p)/(p^2 * 50))), add = TRUE, col = "#8B5E3C", lwd = 2)
+```
+
+La geométrica es muy asimétrica: la mayoría de los valores son chicos y tiene una cola larga hacia la derecha. Aun así, las medias de muestras de 50 salen en forma de campana alrededor de `r round(mean(medias_geom), 2)` (la media teórica es 9). Puede que quede un poquito de asimetría porque la distribución original está muy sesgada, pero en general el TCL sí se cumple.
+
+# Distribución Binomial Negativa
+
+### Ejercicio 4.1
+
+Función que compara la suma de geométricas con la binomial negativa.
+
+```{r}
+compara_geom_nbinom <- function(r, p, n_sim = 10000) {
+  # Suma de r geométricas independientes
+  mat_geom <- matrix(rgeom(r * n_sim, prob = p), nrow = n_sim, ncol = r)
+  suma_geom <- rowSums(mat_geom)
+
+  # Binomial Negativa directa
+  directo_nbinom <- rnbinom(n_sim, size = r, prob = p)
+
+  # Gráfico comparativo
+  par(mfrow = c(1, 2))
+  hist(suma_geom, main = "Suma de Geométricas", col = "#8E99A3", probability = TRUE)
+  hist(directo_nbinom, main = "Binomial Negativa Directa", col = "#B8A88A", probability = TRUE)
+  par(mfrow = c(1, 1))
+}
+
+# Prueba de la función
+compara_geom_nbinom(r = 5, p = 0.3)
+```
+
+Hice una función que suma $r$ geométricas independientes y lo compara con una binomial negativa simulada directamente. Con $r = 5$ y $p = 0.3$, los dos histogramas salen prácticamente iguales. La idea es sencilla: esperar al quinto éxito es lo mismo que esperar el primero, luego el segundo, y así cinco veces, y cada una de esas esperas es una geométrica.
+
+### Ejercicio 4.2
+
+TCL para medias muestrales ($k=1000, n=50, r=4, p=0.4$).
+
+```{r}
+set.seed(123)
+r <- 4; p <- 0.4
+mu_bn <- r * (1 - p) / p
+var_bn <- r * (1 - p) / (p^2)
+
+medias_bn <- replicate(1000, mean(rnbinom(50, size = r, prob = p)))
+
+hist(medias_bn, probability = TRUE, col = "#B8B0A2", main = "TCL - Binomial Negativa")
+curve(dnorm(x, mean = mu_bn, sd = sqrt(var_bn / 50)), add = TRUE, col = "#3D4650", lwd = 2)
+```
+
+Con la binomial negativa pasa lo mismo: las medias de muestras de 50 forman una campana centrada en `r round(mean(medias_bn), 2)`, muy cerca de la media teórica de `r mu_bn`, y la curva normal se ajusta bien al histograma.
+
+# Distribución Poisson
+
+### Ejercicio 6.1
+
+TCL para Poisson con $\lambda = 7$.
+
+```{r}
+set.seed(123)
+lambda <- 7
+medias_poisson <- replicate(1000, mean(rpois(50, lambda = lambda)))
+
+hist(medias_poisson, probability = TRUE, col = "#C9C5BD", main = "TCL - Poisson(7)")
+curve(dnorm(x, mean = lambda, sd = sqrt(lambda / 50)), add = TRUE, col = "#5F6B76", lwd = 2)
+```
+
+Las medias de muestras de 50 de una Poisson(7) se acomodan en una campana alrededor de `r round(mean(medias_poisson), 2)`, casi el 7 teórico. Además la campana es angosta (desviación estándar teórica de `r round(sqrt(7/50), 2)`): con muestras de 50, el promedio casi siempre queda cerca del valor real.
+
+### Ejercicio 6.2
+
+Verificación de aditividad: $X_1 \sim \text{Poisson}(3.5)$, $X_2 \sim \text{Poisson}(2.8) \implies X_1 + X_2 \sim \text{Poisson}(6.3)$
+
+```{r}
+set.seed(123)
+N <- 10000
+
+# a. Generar muestras y sumar
+X1 <- rpois(N, lambda = 3.5)
+X2 <- rpois(N, lambda = 2.8)
+Suma_P <- X1 + X2
+
+# b. Comparar estadísticas con Poisson(6.3)
+P_directa <- rpois(N, lambda = 6.3)
+cat("Suma X1+X2 -> Media:", mean(Suma_P), "| Var:", var(Suma_P), "\n")
+cat("Directa 6.3 -> Media:", mean(P_directa), "| Var:", var(P_directa), "\n")
+
+# c. Extensión a 4 variables Poisson independientes
+X3 <- rpois(N, lambda = 1.2)
+X4 <- rpois(N, lambda = 2.0)
+Suma_4 <- X1 + X2 + X3 + X4 # Lambda total = 3.5 + 2.8 + 1.2 + 2.0 = 9.5
+cat("Suma 4 variables -> Media:", mean(Suma_4), "| Var:", var(Suma_4), "\n")
+```
+
+La suma de las dos Poisson tiene media `r round(mean(Suma_P), 2)` y varianza `r round(var(Suma_P), 2)`, casi lo mismo que la Poisson(6.3) directa. Y como en la Poisson la media y la varianza son iguales, que las dos salgan alrededor de 6.3 es buena señal de que la suma sí es Poisson. Con cuatro variables pasa igual: media `r round(mean(Suma_4), 2)` y varianza `r round(var(Suma_4), 2)`, cerca de 9.5. Un ejemplo práctico: si a una tienda llegan clientes por dos puertas de forma independiente, el total de clientes también es Poisson, con $\lambda$ igual a la suma de las dos.
+
+### Ejercicio 6.3 (Problemas de Optimización e Inventario)
+
+Demanda diaria $X \sim \text{Poisson}(\lambda = 8)$.
+
+```{r}
+lambda <- 8
+
+# a. Inventario = 12 unidades. Probabilidad de quedarse sin existencias (P(X > 12))
+p_agotado_12 <- ppois(12, lambda = lambda, lower.tail = FALSE)
+cat("a. P(Quedarse sin stock con 12 unidades):", round(p_agotado_12, 4), "\n")
+
+# b. Unidades para que P(X > k) < 0.05  <=>  P(X <= k) >= 0.95
+k_opt_5pct <- qpois(0.95, lambda = lambda)
+cat("b. Unidades necesarias para < 5% prob de agotarse:", k_opt_5pct, "\n")
+
+# c. Función de costo esperado diario para un nivel de inventario S
+costo_esperado <- function(S, lambda = 8, c_mant = 2, c_falt = 15, c_adq = 10) {
+  x <- 0:50 # Rango amplio de demanda
+  p_x <- dpois(x, lambda = lambda)
+
+  unid_no_vendidas <- pmax(0, S - x)
+  ventas_perdidas  <- pmax(0, x - S)
+
+  costo_diario <- (c_adq * S) + (c_mant * unid_no_vendidas) + (c_falt * ventas_perdidas)
+  return(sum(costo_diario * p_x))
+}
+
+cat("c. Costo esperado con inventario S = 12:", costo_esperado(12), "\n")
+
+# d. Nivel óptimo de inventario que minimiza el costo total
+inventarios <- 1:25
+costos <- sapply(inventarios, costo_esperado)
+s_optimo <- inventarios[which.min(costos)]
+
+cat("d. Nivel óptimo de inventario:", s_optimo, "con un costo esperado de:", min(costos), "\n")
+
+# Gráfica de optimización de costo
+plot(inventarios, costos, type = "b", pch = 19, col = "#3D4650",
+     main = "Optimización de Inventario", xlab = "Nivel de Inventario (S)", ylab = "Costo Esperado ($)")
+abline(v = s_optimo, col = "#8B5E3C", lty = 2)
+```
+
+- **a.** Con 12 unidades en inventario, hay un `r round(p_agotado_12 * 100, 2)`% de probabilidad de quedarse sin producto en un día, más o menos 1 de cada 16 días.
+- **b.** Para que la probabilidad de agotarse sea menor al 5% hay que tener `r k_opt_5pct` unidades.
+- **c.** Con 12 unidades, el costo esperado al día es de `r round(costo_esperado(12), 2)` pesos.
+- **d.** El inventario que minimiza el costo es de `r s_optimo` unidades, con un costo esperado de `r round(min(costos), 2)` pesos al día.
+
+Lo que más me llamó la atención es que el inventario óptimo (`r s_optimo`) queda **por debajo** de la demanda promedio (8). La razón es que en este modelo cada unidad que se tiene cuesta \$10 de compra más \$2 si no se vende, y quedarse sin una cuesta \$15, así que no conviene tanto tener de más. Si se quisiera el nivel de servicio del 95% (`r k_opt_5pct` unidades), el costo subiría a `r round(costo_esperado(k_opt_5pct), 2)` pesos diarios. La conclusión práctica es que no siempre conviene evitar a toda costa quedarse sin producto: depende de cuánto cuesta tener inventario contra cuánto cuesta perder una venta.
+
+# Conclusión
+
+En esta tarea trabajé con las principales variables aleatorias discretas (uniforme, binomial, geométrica, binomial negativa y Poisson), simulándolas en R y comparando lo que sale en la simulación con lo que dice la teoría. En todos los casos la media y la varianza simuladas quedaron muy cerca de las fórmulas, lo que me da confianza en que los modelos describen bien lo que pasa.
+
+Hay tres ideas que me llevo:
+
+1.  **El TCL aparece en todos lados.** No importa si la variable es plana (uniforme), está cargada hacia un lado (geométrica, binomial negativa) o es de conteo (Poisson): el promedio de muestras de 30 o 50 termina teniendo forma de campana. Esto es lo que después permite usar la normal en inferencia.
+2.  **Las distribuciones se relacionan entre sí.** La suma de binomiales con la misma $p$ es binomial, la suma de geométricas es binomial negativa y la suma de Poisson es Poisson. Saber esto ahorra mucho trabajo.
+3.  **Estos modelos sirven para decidir.** El ejercicio de inventario lo deja claro: con una Poisson y una función de costos se puede encontrar cuánto conviene tener en almacén, y la respuesta no siempre es la que uno intuiría al principio.
