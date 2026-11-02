@@ -1,0 +1,261 @@
+---
+title: "Tarea: Variables Aleatorias Continuas"
+subtitle: "Licenciatura en Economía Industrial"
+author: "Adolfo Lopantzi"
+---
+
+# Distribución Uniforme Continua
+
+**Ejercicio 1.1** (Tiempo de carga entre 2 y 8 segundos)
+
+```{r}
+set.seed(123)
+min_val <- 2; max_val <- 8; n <- 1000
+
+# 1. Histograma con densidad teórica
+tiempos <- runif(n, min = min_val, max = max_val)
+hist(tiempos, probability = TRUE, col = "#C9C5BD", border = "white",
+     main = "Tiempo de Carga - Uniforme(2, 8)", xlab = "Segundos")
+curve(dunif(x, min = min_val, max = max_val), add = TRUE, col = "#3D4650", lwd = 2)
+
+# 2. Percentil 75
+p75 <- qunif(0.75, min = min_val, max = max_val)
+cat("Percentil 75:", p75, "segundos\n")
+
+# 3. P(X < 4)
+prob_4 <- punif(4, min = min_val, max = max_val)
+cat("Probabilidad P(X < 4):", prob_4, "\n")
+```
+
+Si el tiempo de carga puede ser cualquier valor entre 2 y 8 segundos con la misma probabilidad, el histograma sale más o menos plano, que es la forma de la uniforme. El 75% de las cargas tarda menos de `r p75` segundos, y la probabilidad de que una carga tarde menos de 4 segundos es `r round(prob_4, 4)`, o sea, 1 de cada 3. En la uniforme las probabilidades son fáciles de sacar: basta ver qué parte del intervalo cubres (de 2 a 4 son 2 segundos de 6 posibles).
+
+**Ejercicio 1.2** (TCL con Distribución Asimétrica/Truncada)
+
+```{r}
+set.seed(123)
+n_mues <- c(5, 15, 30, 60, 120)
+par(mfrow = c(2, 3))
+
+for (n in n_mues) {
+  medias <- replicate(800, {
+    datos <- runif(n, 0, 1)
+    mean(datos[datos > 0.3]) # Truncada para generar sesgo
+  })
+  hist(medias, probability = TRUE, col = "#B8B0A2", main = paste("n =", n), xlab = "Medias")
+}
+par(mfrow = c(1, 1))
+```
+
+Aquí me quedé solo con los valores mayores a 0.3, así que la variable queda entre 0.3 y 1. Con $n = 5$ el histograma de las medias sale disperso y no tan parejo, porque con tan pocos datos (y algunos se descartan por el recorte) cada media cambia mucho. Conforme $n$ crece, el histograma se va angostando y tomando forma de campana alrededor de 0.65, que es el centro del intervalo $[0.3, 1]$. Eso es el TCL: entre más grande la muestra, más normal y más concentrado el promedio.
+
+**Ejercicio 1.3** (Simulación de Monte Carlo para estimar $\pi$)
+
+```{r}
+set.seed(123)
+n_mc <- 100000
+x_mc <- runif(n_mc, -1, 1)
+y_mc <- runif(n_mc, -1, 1)
+
+pi_est <- 4 * sum(x_mc^2 + y_mc^2 <= 1) / n_mc
+cat("Valor estimado de pi:", pi_est, "\n")
+```
+
+La idea es tirar 100,000 puntos al azar en un cuadrado de lado 2 y contar cuántos caen dentro del círculo de radio 1. Como el círculo ocupa $\pi/4$ del cuadrado, multiplicar esa proporción por 4 da una estimación de $\pi$. Salió `r pi_est`, que se queda a `r round(abs(pi_est - pi), 4)` del valor real. Es un buen ejemplo de cómo con números aleatorios se puede calcular algo que no tiene nada de aleatorio.
+
+# Distribución Exponencial
+
+**Ejercicio 2.1** (Simulación para distintos tamaños de muestra con $\lambda = 0.8$)
+
+```{r}
+set.seed(123)
+lambda <- 0.8
+tamanios <- c(10, 50, 100, 500, 1000)
+
+for (n in tamanios) {
+  muestra <- rexp(n, rate = lambda)
+  cat("n =", n, "| Media muestral:", mean(muestra), "| Teórica:", 1/lambda, "\n")
+  cat("          | Varianza muestral:", var(muestra), "| Teórica:", 1/(lambda^2), "\n")
+}
+```
+
+Con muestras chicas la media y la varianza brincan bastante, pero conforme crece $n$ se van acercando a los valores teóricos: media de $1/\lambda = 1.25$ y varianza de $1/\lambda^2 = 1.5625$. Con $n = 1000$ ya salieron `r round(mean(muestra), 3)` y `r round(var(muestra), 3)`. Esto es la Ley de los Grandes Números: entre más datos, más se parece lo que mides a lo que es en realidad. La varianza tarda más en estabilizarse que la media, porque la exponencial tiene una cola larga y de vez en cuando sale un valor muy grande.
+
+# Distribución Gamma
+
+**Ejercicio 3.1** (Simulación y TCL)
+
+```{r}
+set.seed(123)
+alpha <- 2.5; lambda <- 1.8
+n_mues <- c(5, 10, 20, 30, 50, 100)
+
+for (n in n_mues) {
+  medias <- replicate(1000, mean(rgamma(n, shape = alpha, rate = lambda)))
+  # Se compara la media y varianza teórica dividida entre n
+  cat("n =", n, "| Media:", round(mean(medias), 4), "| Teórica:", round(alpha/lambda, 4),
+      "| Varianza:", round(var(medias), 5), "| Teórica:", round(alpha/(lambda^2 * n), 5), "\n")
+}
+```
+
+En todos los tamaños de muestra, el promedio de las medias queda pegado a $\alpha/\lambda = `r round(alpha/lambda, 4)`$, y su varianza se parece a $\alpha/(\lambda^2 n)$, así que se va haciendo más chica conforme crece $n$. En otras palabras: el promedio siempre apunta al valor correcto, y entre más grande la muestra, menos se equivoca.
+
+**Ejercicio 3.2** (Suma de Exponenciales $\to$ Gamma)
+
+```{r}
+set.seed(123)
+rate_exp <- 1.5
+
+for (n_exp in c(5, 10, 20)) {
+  mat_exp <- matrix(rexp(1000 * n_exp, rate = rate_exp), ncol = n_exp)
+  sumas_exp <- rowSums(mat_exp)
+
+  hist(sumas_exp, probability = TRUE, main = paste("Suma de", n_exp, "exponenciales"), col = "#C9C5BD")
+  curve(dgamma(x, shape = n_exp, rate = rate_exp), add = TRUE, col = "#3D4650", lwd = 2)
+}
+```
+
+En las tres gráficas la curva Gamma se ajusta muy bien al histograma de las sumas. Tiene sentido: si la exponencial es el tiempo que esperas a que pase un evento, la suma de $n$ exponenciales es el tiempo que esperas a que pasen $n$ eventos, y eso es justo lo que mide la Gamma$(n, \lambda)$. También se ve que con más exponenciales la forma se va pareciendo a una campana.
+
+# Distribución Beta
+
+**Ejercicio 4.1** (Convergencia para $\text{Beta}(2, 5)$)
+
+```{r}
+set.seed(123)
+a_shape <- 2; b_shape <- 5
+muestra_beta <- rbeta(10000, shape1 = a_shape, shape2 = b_shape)
+
+hist(muestra_beta, probability = TRUE, col = "#D6D1C7", main = "Beta(2, 5)")
+curve(dbeta(x, shape1 = a_shape, shape2 = b_shape), add = TRUE, col = "#8B5E3C", lwd = 2)
+```
+
+La Beta solo toma valores entre 0 y 1, por eso sirve para modelar proporciones o porcentajes. Con $\alpha = 2$ y $\beta = 5$ queda cargada hacia la izquierda, con la mayoría de los valores abajo de 0.4. La media de la muestra salió `r round(mean(muestra_beta), 4)` y la teórica es $2/7 = `r round(2/7, 4)`$; la varianza salió `r round(var(muestra_beta), 4)` contra `r round(10/392, 4)` teórica.
+
+**Ejercicio 4.2** (TCL en Distribución Beta)
+
+```{r}
+set.seed(123)
+medias_beta <- replicate(1000, mean(rbeta(50, shape1 = 2, shape2 = 5)))
+hist(medias_beta, probability = TRUE, col = "#B8B0A2", main = "TCL - Beta(2, 5)")
+curve(dnorm(x, mean = 2/7, sd = sqrt((2*5)/((7^2)*8*50))), add = TRUE, col = "#3D4650", lwd = 2)
+```
+
+Aunque la Beta(2, 5) está cargada hacia un lado, los promedios de muestras de 50 sí salen en forma de campana alrededor de `r round(mean(medias_beta), 4)`, y la curva normal con la media y varianza teóricas se ajusta bien al histograma.
+
+# Distribución Weibull
+
+**Ejercicio 5.1** (Desarrollo Teórico y Simulación)
+
+```{r}
+set.seed(123)
+shape_w <- 2.5; scale_w <- 100
+muestra_w <- rweibull(1000, shape = shape_w, scale = scale_w)
+
+# Medidas descriptivas
+media_w <- mean(muestra_w)
+var_w <- var(muestra_w)
+
+hist(muestra_w, probability = TRUE, col = "#C9C5BD", main = "Distribución Weibull")
+curve(dweibull(x, shape = shape_w, scale = scale_w), add = TRUE, col = "#3D4650", lwd = 2)
+```
+
+La Weibull se usa mucho para tiempos de vida de máquinas o componentes. La media de la muestra salió `r round(media_w, 2)` y la teórica es $100\,\Gamma(1 + 1/2.5) = `r round(scale_w * gamma(1 + 1/shape_w), 2)`$; la desviación estándar salió `r round(sqrt(var_w), 2)`. Como el parámetro de forma es mayor a 1 (2.5), la probabilidad de falla aumenta con el tiempo, que es lo que pasa con algo que se desgasta: entre más lo usas, más probable es que falle.
+
+# Distribución Ji-cuadrada
+
+**Ejercicios 6.1 a 6.5** (Convergencia, TCL, Aditividad y Relación con Normal)
+
+```{r}
+set.seed(123)
+# Ejercicio 6.3: Suma de normales al cuadrado -> Ji-cuadrada
+df <- 10; n_sim <- 10000
+mat_norm <- matrix(rnorm(n_sim * df), ncol = df)
+ji_sim <- rowSums(mat_norm^2)
+
+cat("Media Ji-cuadrada teórica:", df, "| Simulada:", mean(ji_sim), "\n")
+
+# Ejercicio 6.5: Aditividad Ji1 + Ji2
+j1 <- rchisq(n_sim, df = 5)
+j2 <- rchisq(n_sim, df = 15)
+suma_j <- j1 + j2 # Debería ser Ji-cuadrada con df = 20
+cat("Media de la suma:", mean(suma_j), "| Esperada:", 20, "\n")
+```
+
+Dos resultados:
+
+- Al sumar los cuadrados de 10 normales estándar, la media salió `r round(mean(ji_sim), 3)`, prácticamente los 10 grados de libertad. Así se construye la Ji-cuadrada: con normales al cuadrado.
+- Al sumar una Ji-cuadrada de 5 grados y otra de 15, la media salió `r round(mean(suma_j), 3)`, cerca de 20. Los grados de libertad se suman: $\chi^2_{n} + \chi^2_{m} = \chi^2_{n+m}$.
+
+Esto es importante porque más adelante la Ji-cuadrada aparece al trabajar con varianzas muestrales.
+
+# Distribución t de Student
+
+**Ejercicio 7.1** (Muestras de tamaño 100, 300 y 1000 con $df=5$)
+
+```{r}
+set.seed(123)
+df_t <- 5
+muestra_1000 <- rt(1000, df = df_t)
+
+hist(muestra_1000, probability = TRUE, col = "#D6D1C7", main = "t de Student (df = 5)", breaks = 40)
+curve(dt(x, df = df_t), add = TRUE, col = "#3D4650", lwd = 2)
+curve(dnorm(x), add = TRUE, col = "#8B5E3C", lty = 2, lwd = 2)
+```
+
+La línea sólida es la $t$ con 5 grados de libertad y la punteada es la normal estándar. Las dos están centradas en 0 y se parecen, pero la $t$ es más baja en el centro y tiene las colas más pesadas, o sea que le da más probabilidad a valores extremos. Por eso se usa con muestras chicas: es más "cautelosa" que la normal cuando hay poca información. Con más grados de libertad, la $t$ se va pareciendo cada vez más a la normal.
+
+**Ejercicio 7.2 & 7.3** (Construcción $T = \frac{X}{\sqrt{Y/n}}$ y TCL para muestras normales)
+
+```{r}
+set.seed(123)
+Z <- rnorm(1000)
+V <- rchisq(1000, df = 10)
+T_construida <- Z / sqrt(V / 10)
+
+hist(T_construida, probability = TRUE, col = "#C9C5BD", main = "t Construida de Z y V")
+curve(dt(x, df = 10), add = TRUE, col = "#3D4650", lwd = 2)
+```
+
+Construí la $t$ "a mano": una normal estándar dividida entre la raíz de una Ji-cuadrada sobre sus grados de libertad. El histograma se ajusta a la curva $t$ con 10 grados de libertad, lo que confirma la definición. Así se conectan las tres distribuciones: la normal y la Ji-cuadrada juntas forman la $t$.
+
+# Distribución F de Fisher
+
+**Ejercicio 8.1** (Propiedades y Verificación)
+
+```{r}
+set.seed(123)
+# a. Si X ~ t(n) -> X^2 ~ F(1, n)
+X_t <- rt(10000, df = 10)
+F_de_t <- X_t^2
+cat("a. Media de t^2:", mean(F_de_t), "| Teórica F(1, 10):", 10/8, "\n")
+
+# b. Si X ~ F(a, b) -> 1/X ~ F(b, a)
+X_f <- rf(10000, df1 = 5, df2 = 10)
+inv_f <- 1 / X_f
+cat("b. Media de 1/F(5, 10):", mean(inv_f), "| Teórica F(10, 5):", 5/3, "\n")
+
+# c. Cociente de Ji-cuadradas: (X/a) / (Y/b) ~ F(a, b)
+chi_a <- rchisq(10000, df = 5) / 5
+chi_b <- rchisq(10000, df = 10) / 10
+F_cociente <- chi_a / chi_b
+
+cat("Media cociente Ji-cuadradas:", mean(F_cociente), "| Teórica 10/8:", 10/8, "\n")
+```
+
+Comprobé las tres propiedades comparando la media simulada con la teórica (la media de una $F(a, b)$ es $b/(b-2)$):
+
+- **a.** Elevar al cuadrado una $t$ con 10 grados da una $F(1, 10)$: media de `r round(mean(F_de_t), 3)` contra 1.25.
+- **b.** El inverso de una $F(5, 10)$ es una $F(10, 5)$: media de `r round(mean(inv_f), 3)` contra 1.667.
+- **c.** El cociente de dos Ji-cuadradas divididas entre sus grados de libertad da una $F(5, 10)$: media de `r round(mean(F_cociente), 3)` contra 1.25.
+
+En los tres casos salió cerca de lo esperado. La $F$ es la que se usa para comparar varianzas de dos grupos.
+
+# Conclusión
+
+En esta tarea trabajé con las principales distribuciones continuas, simulándolas en R y comparando lo que sale con lo que dice la teoría. Lo que me llevo:
+
+1.  **Cada distribución sirve para algo concreto.** La uniforme para cuando todo es igual de probable, la exponencial y la Gamma para tiempos de espera, la Beta para proporciones y la Weibull para el tiempo de vida de equipos.
+2.  **Las distribuciones están conectadas.** Sumar exponenciales da una Gamma; elevar normales al cuadrado da una Ji-cuadrada; con una normal y una Ji-cuadrada se arma la $t$; y con dos Ji-cuadradas, la $F$. No son cosas aisladas.
+3.  **Con más datos, la simulación se acerca a la teoría.** Lo vi con la Ley de los Grandes Números en la exponencial y con el TCL en la uniforme, la Gamma y la Beta: los promedios terminan en forma de campana, sin importar la forma de la variable original.
+
+Las últimas tres distribuciones (Ji-cuadrada, $t$ y $F$) son la base de lo que sigue en inferencia: intervalos de confianza y pruebas de hipótesis.
